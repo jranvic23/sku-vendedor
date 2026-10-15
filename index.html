@@ -1,1 +1,210 @@
-<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>SKU</title><style>body{font-family:Arial;max-width:700px;margin:auto;padding:15px}input{width:100%;padding:12px;font-size:20px}.sku{display:inline-block;background:#eaf4ff;margin:4px;padding:8px;border-radius:6px}</style></head><body><h2>Consulta SKU Faltantes</h2><input id=c placeholder="Número de cliente"><div id=r></div><script>let d={};fetch('clientes.json').then(r=>r.json()).then(j=>d=j);c.oninput=()=>{let x=d[c.value];r.innerHTML=x?'<h3>'+x.nombre+'</h3>'+x.skus.map(s=>'<span class=sku>'+s+'</span>').join(''):'Cliente no encontrado';}</script></body></html>
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+
+<title>SKU Vendedor</title>
+
+manifest.json
+<meta name="theme-color" content="#00539b">
+
+<style>
+body{
+    font-family: Arial, sans-serif;
+    max-width:700px;
+    margin:auto;
+    padding:15px;
+    background:#f5f7fa;
+}
+
+h1{
+    text-align:center;
+    color:#00539b;
+}
+
+input{
+    width:100%;
+    padding:14px;
+    font-size:20px;
+    border:1px solid #ccc;
+    border-radius:8px;
+    box-sizing:border-box;
+}
+
+.tarjeta{
+    background:#fff;
+    margin-top:15px;
+    padding:15px;
+    border-radius:12px;
+    box-shadow:0 2px 6px rgba(0,0,0,.1);
+}
+
+.dato{
+    margin:8px 0;
+}
+
+.etiqueta{
+    font-weight:bold;
+    color:#00539b;
+}
+
+.sku{
+    display:inline-block;
+    background:#eaf4ff;
+    border:1px solid #b7d9ff;
+    margin:4px;
+    padding:8px 12px;
+    border-radius:8px;
+    font-weight:bold;
+}
+
+.error{
+    background:#fff3f3;
+    color:#c00000;
+    padding:12px;
+    border-radius:8px;
+    margin-top:15px;
+}
+
+.estado{
+    text-align:center;
+    color:#666;
+    margin-bottom:10px;
+    font-size:14px;
+}
+</style>
+</head>
+
+<body>
+
+<h1>SKU Vendedor</h1>
+
+<div class="estado" id="estado">
+Cargando información...
+</div>
+
+<input
+id="cliente"
+placeholder="Número de cliente"
+autocomplete="off"
+inputmode="numeric">
+
+<div id="resultado"></div>
+
+<script>
+
+let datos = {};
+
+fetch("clientes.json")
+.then(r => r.json())
+.then(json => {
+
+    datos = json;
+
+    document.getElementById("estado").innerHTML =
+        "Datos cargados correctamente";
+
+})
+.catch(()=>{
+
+    document.getElementById("estado").innerHTML =
+        "Modo sin conexión";
+
+});
+
+document.getElementById("cliente").addEventListener("input", function(){
+
+    let numero = this.value.trim();
+
+    let info = datos[numero];
+
+    let contenedor = document.getElementById("resultado");
+
+    if(!numero){
+        contenedor.innerHTML = "";
+        return;
+    }
+
+    if(!info){
+
+        contenedor.innerHTML = `
+            <div class="error">
+                Cliente no encontrado
+            </div>
+        `;
+        return;
+    }
+
+    let skus = "";
+
+    if(info.skus && info.skus.length){
+
+        skus = info.skus
+            .map(s => `<span class="sku">${s}</span>`)
+            .join("");
+
+    } else {
+
+        skus = "<p>Sin SKU faltantes</p>";
+
+    }
+
+    contenedor.innerHTML = `
+
+        <div class="tarjeta">
+
+            <div class="dato">
+                <span class="etiqueta">Cliente:</span>
+                ${numero}
+            </div>
+
+            <div class="dato">
+                <span class="etiqueta">Nombre:</span>
+                ${info.nombre || ""}
+            </div>
+
+            <div class="dato">
+                <span class="etiqueta">Ruta:</span>
+                ${info.ruta || ""}
+            </div>
+
+            <div class="dato">
+                <span class="etiqueta">Día:</span>
+                ${info.dia || ""}
+            </div>
+
+            <div class="dato">
+                <span class="etiqueta">Segmento:</span>
+                ${info.segmento || ""}
+            </div>
+
+            <hr>
+
+            <div class="dato">
+                <span class="etiqueta">SKU Faltantes:</span>
+            </div>
+
+            ${skus}
+
+        </div>
+
+    `;
+});
+
+if ("serviceWorker" in navigator) {
+
+    window.addEventListener("load", () => {
+
+        navigator.serviceWorker.register("./sw.js")
+        .then(() => console.log("Service Worker registrado"))
+        .catch(err => console.log(err));
+
+    });
+
+}
+
+</script>
+
+</body>
+</html>
