@@ -1,4 +1,4 @@
-const CACHE_NAME = 'sku-vendedor-v2';
+const CACHE_NAME = 'sku-vendedor-v3';
 
 self.addEventListener('install', event => {
   self.skipWaiting();
