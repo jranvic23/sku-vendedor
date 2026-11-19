@@ -14,6 +14,9 @@ input{width:100%;padding:14px;font-size:20px;border:1px solid #ccc;border-radius
 .dato{margin:8px 0}.etiqueta{font-weight:bold;color:#00539b}
 .estado{text-align:center;color:#666;margin-bottom:10px;font-size:14px}
 .error{background:#fff3f3;color:#c00000;padding:12px;border-radius:8px;margin-top:15px}
+.beneficio{background:#f7f9fc;border:1px solid #d8e0ea;border-radius:9px;padding:10px 12px;margin:12px 0}
+.meta-pendiente{background:#fff7e8;border-color:#efbd6a;color:#7a4300;font-weight:bold}
+.meta-cumplida{background:#e8f7ed;border-color:#79bf8d;color:#17652f;font-weight:bold}
 .resumen{display:flex;justify-content:space-between;align-items:center;gap:10px;background:#eef6ff;border:1px solid #c8e0f8;border-radius:9px;padding:11px 12px;margin:12px 0;font-weight:bold}
 .contador{font-size:20px;color:#00539b}
 .lista-skus{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:8px}
@@ -35,59 +38,44 @@ input{width:100%;padding:14px;font-size:20px;border:1px solid #ccc;border-radius
 let datos={};
 const CLAVE='skuColocadosHoy';
 const HOY=()=>{const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;};
-function leerMarcas(){
-  try{
-    const obj=JSON.parse(localStorage.getItem(CLAVE)||'{}');
-    if(obj.fecha!==HOY()) return {fecha:HOY(),items:{}};
-    return obj;
-  }catch(e){return {fecha:HOY(),items:{}};}
-}
+const dinero=v=>new Intl.NumberFormat('es-MX',{style:'currency',currency:'MXN',minimumFractionDigits:0,maximumFractionDigits:2}).format(Number(v)||0);
+function leerMarcas(){try{const obj=JSON.parse(localStorage.getItem(CLAVE)||'{}');if(obj.fecha!==HOY())return {fecha:HOY(),items:{}};return obj;}catch(e){return {fecha:HOY(),items:{}};}}
 function guardarMarcas(m){localStorage.setItem(CLAVE,JSON.stringify(m));}
 function totalHoy(){return Object.values(leerMarcas().items).filter(Boolean).length;}
 function llave(cliente,sku){return cliente+'|'+sku;}
-function mapaNegativos(info){
-  const m={};
-  (info.skusDetalle||[]).forEach(x=>{if(x&&x.sku!==undefined)m[String(x.sku)]=Number(x.valor);});
-  return m;
+function mapaNegativos(info){const m={};(info.skusDetalle||[]).forEach(x=>{if(x&&x.sku!==undefined)m[String(x.sku)]=Number(x.valor);});return m;}
+function bloqueBeneficios(info){
+  if(!info.tier) return `<div class="beneficio"><div class="dato"><span class="etiqueta">Plan de beneficios:</span> No aplica</div></div>`;
+  const estado=info.metaCumplida
+    ? `<div class="beneficio meta-cumplida">✓ Meta cumplida · Excedente: ${dinero(info.excedente)}</div>`
+    : `<div class="beneficio meta-pendiente">Falta para cumplir: ${dinero(info.falta)}</div>`;
+  return `<div class="beneficio">
+    <div class="dato"><span class="etiqueta">Tier:</span> ${info.tier}</div>
+    <div class="dato"><span class="etiqueta">Meta:</span> ${dinero(info.meta)}</div>
+    <div class="dato"><span class="etiqueta">Avance:</span> ${dinero(info.avance)}</div>
+  </div>${estado}`;
 }
 function render(numero){
-  const info=datos[numero], contenedor=document.getElementById('resultado');
+  const info=datos[numero],contenedor=document.getElementById('resultado');
   if(!numero){contenedor.innerHTML='';return;}
   if(!info){contenedor.innerHTML='<div class="error">Cliente no encontrado</div>';return;}
-  const negativos=mapaNegativos(info), marcas=leerMarcas();
+  const negativos=mapaNegativos(info),marcas=leerMarcas();
   let skus='';
   if(info.skus&&info.skus.length){
-    skus='<div class="lista-skus">'+info.skus.map(s=>{
-      const sku=String(s), valor=negativos[sku], neg=Number.isFinite(valor)&&valor<0;
-      const checked=!!marcas.items[llave(numero,sku)];
-      return `<label class="sku-item ${neg?'sku-negativo':''} ${checked?'sku-colocado':''}" data-sku="${sku}">
-        <input type="checkbox" class="sku-check" data-cliente="${numero}" data-sku="${sku}" ${checked?'checked':''}>
-        <span class="sku-codigo">${sku}</span>
-        ${neg?`<span class="sku-valor">${valor}</span>`:''}
-      </label>`;
-    }).join('')+'</div>';
+    skus='<div class="lista-skus">'+info.skus.map(s=>{const sku=String(s),valor=negativos[sku],neg=Number.isFinite(valor)&&valor<0;const checked=!!marcas.items[llave(numero,sku)];return `<label class="sku-item ${neg?'sku-negativo':''} ${checked?'sku-colocado':''}" data-sku="${sku}"><input type="checkbox" class="sku-check" data-cliente="${numero}" data-sku="${sku}" ${checked?'checked':''}><span class="sku-codigo">${sku}</span>${neg?`<span class="sku-valor">${valor}</span>`:''}</label>`;}).join('')+'</div>';
   }else{skus='<p>Sin SKU faltantes</p>';}
   contenedor.innerHTML=`<div class="tarjeta">
     <div class="dato"><span class="etiqueta">Cliente:</span> ${numero}</div>
     <div class="dato"><span class="etiqueta">Nombre:</span> ${info.nombre||''}</div>
-    <div class="dato"><span class="etiqueta">Ruta:</span> ${info.ruta||''}</div>
-    <div class="dato"><span class="etiqueta">Día:</span> ${info.dia||''}</div>
     <div class="dato"><span class="etiqueta">Segmento:</span> ${info.segmento||''}</div>
+    ${bloqueBeneficios(info)}
     <div class="resumen"><span>SKU marcados como colocados hoy</span><span class="contador" id="contadorHoy">${totalHoy()}</span></div>
     <div class="dato"><span class="etiqueta">SKU Faltantes:</span></div>${skus}
     <div class="nota">Los SKU en naranja muestran el valor negativo de origen. Las marcas son seguimiento local del vendedor y no sustituyen la venta confirmada del reporte.</div>
   </div>`;
-  document.querySelectorAll('.sku-check').forEach(ch=>ch.addEventListener('change',function(){
-    const m=leerMarcas(), k=llave(this.dataset.cliente,this.dataset.sku);
-    if(this.checked)m.items[k]=true;else delete m.items[k];
-    guardarMarcas(m);
-    this.closest('.sku-item').classList.toggle('sku-colocado',this.checked);
-    const c=document.getElementById('contadorHoy');if(c)c.textContent=totalHoy();
-  }));
+  document.querySelectorAll('.sku-check').forEach(ch=>ch.addEventListener('change',function(){const m=leerMarcas(),k=llave(this.dataset.cliente,this.dataset.sku);if(this.checked)m.items[k]=true;else delete m.items[k];guardarMarcas(m);this.closest('.sku-item').classList.toggle('sku-colocado',this.checked);const c=document.getElementById('contadorHoy');if(c)c.textContent=totalHoy();}));
 }
-fetch('clientes.json',{cache:'no-store'}).then(r=>{if(!r.ok)throw new Error('HTTP '+r.status);return r.json();}).then(json=>{
-  datos=json;document.getElementById('estado').textContent='Datos cargados correctamente';
-}).catch(()=>{document.getElementById('estado').textContent='Modo sin conexión';});
+fetch('clientes.json',{cache:'no-store'}).then(r=>{if(!r.ok)throw new Error('HTTP '+r.status);return r.json();}).then(json=>{datos=json;document.getElementById('estado').textContent='Datos cargados correctamente';}).catch(()=>{document.getElementById('estado').textContent='Modo sin conexión';});
 document.getElementById('cliente').addEventListener('input',function(){render(this.value.trim());});
 if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(console.log));}
 </script>
