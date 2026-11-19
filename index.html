@@ -51,6 +51,7 @@ function bloqueBeneficios(info){
     : `<div class="beneficio meta-pendiente">Falta para cumplir: ${dinero(info.falta)}</div>`;
   return `<div class="beneficio">
     <div class="dato"><span class="etiqueta">Tier:</span> ${info.tier}</div>
+    <div class="dato"><span class="etiqueta">Semana:</span> ${info.semanaPeriodo||''}</div>
     <div class="dato"><span class="etiqueta">Meta:</span> ${dinero(info.meta)}</div>
     <div class="dato"><span class="etiqueta">Avance:</span> ${dinero(info.avance)}</div>
   </div>${estado}`;
